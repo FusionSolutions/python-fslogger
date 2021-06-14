@@ -25,7 +25,7 @@ class Filter:
 		name:str = path.pop(0)
 		key:str
 		val:Filter
-		for key, val in reversed(self.keys.items()):
+		for key, val in self.keys.items().__reversed__():
 			if name == key or fnmatchcase(name, key):
 				if path:
 					return val.getFilteredID(path) or self.fallbackLevel
