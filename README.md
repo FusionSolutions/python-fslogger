@@ -1,3 +1,4 @@
+[![Python tests](https://github.com/FusionSolutions/python-fslogger/actions/workflows/python-package.yml/badge.svg?branch=main)](https://github.com/FusionSolutions/python-fslogger/actions/workflows/python-package.yml)
 # Logging utilty
 
 ## Introduction
