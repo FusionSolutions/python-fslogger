@@ -82,6 +82,12 @@ class LoggerManager:
 			except:
 				pass
 		self.modules.clear()
+		if isinstance(sys.stderr, STDErrModule):
+			sys.stderr.forceFlush()
+			sys.stderr = self._stderr
+		if isinstance(sys.stdout, STDOutModule):
+			sys.stdout.forceFlush()
+			sys.stdout = self._stdout
 		LoggerManager.handler = None
 	@staticmethod
 	def getLogger(self, name:str) -> "Logger":
@@ -132,7 +138,7 @@ class DowngradedLoggerManager(LoggerManager):
 		return time(), 0
 
 class LoggerManagerTest(unittest.TestCase):
-	def test(self):
+	def test_first(self):
 		from tempfile import TemporaryDirectory
 		lm = LoggerManager(
 			messageFormat="[{levelshortname}][{name}] : {message}\n",
@@ -149,6 +155,24 @@ class LoggerManagerTest(unittest.TestCase):
 			log.info("Hello")
 			with open(fn, "rt") as fid:
 				self.assertEqual(fid.read(), "[INF][test] : Hello\n")
+		lm.close()
+	def test_second(self):
+		from tempfile import TemporaryDirectory
+		lm = LoggerManager(
+			messageFormat="[{levelshortname}][{name}] : {message}\n",
+			defaultLevel="TRACE",
+			hookSTDOut=True,
+			hookSTDErr=False
+		)
+		with TemporaryDirectory() as tmpdir:
+			fn:str = "{}/teszt.log".format(tmpdir)
+			lm.initFileStream(fn)
+			print("Hel", end="")
+			print("lo")
+			print("Hello")
+			with open(fn, "rt") as fid:
+				self.assertEqual(fid.read(), "[INF][Standard.Output] : Hello\n[INF][Standard.Output] : Hello\n")
+		lm.close()
 
 # Finalizing imports
 from .modules import *

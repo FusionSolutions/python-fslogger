@@ -1,4 +1,4 @@
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 __doc__ = """
 Logging utility v{}
 Copyright (C) 2021 Fusion Solutions KFT <contact@fusionsolutions.io>
@@ -25,13 +25,15 @@ from .loggerManager import LoggerManager, DowngradedLoggerManager
 root:Optional[LoggerManager] = None
 def SimpleLogger(level:Union[str, int]="TRACE") -> LoggerManager:
 	global root
-	root = LoggerManager(defaultLevel=level)
-	root.initStandardOutStream()
+	if not isinstance(root, LoggerManager):
+		root = LoggerManager(defaultLevel=level)
+		root.initStandardOutStream()
 	return root
 
 def downgradeLoggerManager() -> LoggerManager:
 	global root
-	root = DowngradedLoggerManager()
+	if not isinstance(root, LoggerManager):
+		root = DowngradedLoggerManager()
 	return root
 
 __all__ = "LoggerManager", "Logger", "Levels", "FilterParser", "SimpleLogger", "downgradeLoggerManager"

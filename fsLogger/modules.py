@@ -8,6 +8,46 @@ from time import time
 from typing import List, Any, TextIO, Optional
 # Local modules
 # Program
+class STDErrModule:
+	def __init__(self) -> None:
+		self.log:Any =Logger("Standard").getChild("Error")
+		self.closed:bool = False
+		self.buffer:str = ""
+	def write(self, data:str) -> None:
+		if data:
+			self.buffer += data
+		self.flush()
+	def flush(self) -> None:
+		while "\n" in self.buffer:
+			pos:int = self.buffer.find("\n")
+			self.log.error(self.buffer[:pos])
+			self.buffer = self.buffer[pos+1:]
+	def forceFlush(self) -> None:
+		self.log.error(self.buffer)
+		self.buffer = ""
+	def close(self) -> None:
+		self.closed = True
+
+class STDOutModule:
+	def __init__(self) -> None:
+		self.log:Any = Logger("Standard").getChild("Output")
+		self.closed:bool = False
+		self.buffer:str = ""
+	def write(self, data:str) -> None:
+		if data:
+			self.buffer += data
+		self.flush()
+	def flush(self) -> None:
+		while "\n" in self.buffer:
+			pos:int = self.buffer.find("\n")
+			self.log.info(self.buffer[:pos])
+			self.buffer = self.buffer[pos+1:]
+	def forceFlush(self) -> None:
+		self.log.info(self.buffer)
+		self.buffer = ""
+	def close(self) -> None:
+		self.closed = True
+
 class ModuleBase(metaclass=ABCMeta):
 	@abstractmethod
 	def emit(self, data:str) -> None: pass
@@ -28,50 +68,6 @@ class STDOutStreamingModule(ModuleBase):
 		if self.stream:
 			self.stream.close()
 		self.stream = None
-
-class STDErrModule:
-	def __init__(self) -> None:
-		self.log:Any =Logger("Standard").getChild("Error")
-		self.closed:bool = False
-		self.buffer:str = ""
-	def write(self, data:str) -> None:
-		if data:
-			self.buffer += data
-		self.flush()
-	def flush(self) -> None:
-		i:int
-		skipLastLine:bool = self.buffer[-1:] != "\n"
-		lines:List[str] = self.buffer.splitlines()
-		line:str
-		for i, line in enumerate(lines):
-			if i == len(lines)-1 and skipLastLine:
-				self.buffer = line
-				break
-			self.log.error(line)
-	def close(self) -> None:
-		self.closed = True
-
-class STDOutModule:
-	def __init__(self) -> None:
-		self.log:Any = Logger("Standard").getChild("Output")
-		self.closed:bool = False
-		self.buffer:str = ""
-	def write(self, data:str) -> None:
-		if data:
-			self.buffer += data
-		self.flush()
-	def flush(self) -> None:
-		i:int
-		line:str
-		skipLastLine:bool = self.buffer[-1:] != "\n"
-		lines:List[str] = self.buffer.splitlines()
-		for i, line in enumerate(lines):
-			if i == len(lines)-1 and skipLastLine:
-				self.buffer = line
-				break
-			self.log.info(line)
-	def close(self) -> None:
-		self.closed = True
 
 class FileStream(ModuleBase):
 	def __init__(self, fullPath:str):

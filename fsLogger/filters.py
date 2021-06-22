@@ -128,6 +128,7 @@ class FilterParser:
 
 class FilterTest(unittest.TestCase):
 	def test(self):
+		_old:str = LoggerManager.groupSeperator
 		LoggerManager.groupSeperator = "-"
 		beforeFilterData:list = [
 			{ "server": [
@@ -213,5 +214,6 @@ class FilterTest(unittest.TestCase):
 		self.assertEqual( filter.getFilteredID(["server", "client", "192.168.2.3", "somewhat"]), 50 )
 		self.assertEqual( filter.getFilteredID(["server", "client", "192.168.2.4"]), 50 )
 		self.assertEqual( filter.getFilteredID(["server", "client", "192.168.2.4", "somewhat"]), 50 )
+		LoggerManager.groupSeperator = _old
 
 from .loggerManager import LoggerManager

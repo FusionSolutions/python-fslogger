@@ -1,5 +1,4 @@
 # Builtin modules
-from __future__ import annotations
 import logging, unittest
 # Local modules
 from .filters import FilterTest
