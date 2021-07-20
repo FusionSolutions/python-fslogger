@@ -1,27 +1,15 @@
 # Builtin modules
 from __future__ import annotations
-import re
-from typing import Dict, Tuple, Any, Union, Callable, Optional
-from functools import partial
+from typing import Dict, Any, Union
 from time import time
+# Third party modules
 # Local modules
 # Program
 class Logger:
 	name:str
 	filterChangeTime:float
 	lastFilterLevel:int
-	trace:Optional[Callable]
-	debug:Optional[Callable]
-	info:Optional[Callable]
-	warn:Optional[Callable]
-	warning:Optional[Callable]
-	error:Optional[Callable]
-	critical:Optional[Callable]
-	fatal:Optional[Callable]
-	__slots__ = (
-		"name", "filterChangeTime", "lastFilterLevel", "trace", "debug",
-		"info", "warn", "warning", "error", "critical", "fatal"
-	)
+	__slots__ = ( "name", "filterChangeTime", "lastFilterLevel" )
 	def __init__(self, name:Union[str, Logger]):
 		if isinstance(name, Logger):
 			name = name.name
@@ -36,14 +24,6 @@ class Logger:
 		self.name = states["name"]
 		self.filterChangeTime = states["filterChangeTime"]
 		self.lastFilterLevel = states["lastFilterLevel"]
-		self.trace    = partial(self._emit, Levels.getLevelIDByName("TRACE"))
-		self.debug    = partial(self._emit, Levels.getLevelIDByName("DEBUG"))
-		self.info     = partial(self._emit, Levels.getLevelIDByName("INFO"))
-		self.warn     = partial(self._emit, Levels.getLevelIDByName("WARNING"))
-		self.warning  = self.warn
-		self.error    = partial(self._emit, Levels.getLevelIDByName("ERROR"))
-		self.critical = partial(self._emit, Levels.getLevelIDByName("CRITICAL"))
-		self.fatal    = self.critical
 	def getChild(self, name:str) -> Logger:
 		return Logger("{}{}{}".format(self.name, LoggerManager.groupSeperator, name))
 	def isFiltered(self, levelID:Union[int, str]) -> bool:
@@ -52,9 +32,38 @@ class Logger:
 		if isinstance(levelID, str):
 			levelID = Levels.parse(levelID)
 		return levelID >= self.lastFilterLevel
-	def _emit(self, levelID:int, message:str, *args, **kwargs) -> None:
+	def trace(self, message:str, /, *args:Any, **kwargs:Any) -> None:
+		levelID = Levels.getLevelIDByName("TRACE")
 		if self.isFiltered(levelID):
 			LoggerManager.emit(self.name, levelID, time(), message, args, kwargs)
+		return None
+	def debug(self, message:str, /, *args:Any, **kwargs:Any) -> None:
+		levelID = Levels.getLevelIDByName("DEBUG")
+		if self.isFiltered(levelID):
+			LoggerManager.emit(self.name, levelID, time(), message, args, kwargs)
+		return None
+	def info(self, message:str, /, *args:Any, **kwargs:Any) -> None:
+		levelID = Levels.getLevelIDByName("INFO")
+		if self.isFiltered(levelID):
+			LoggerManager.emit(self.name, levelID, time(), message, args, kwargs)
+		return None
+	def warn(self, message:str, /, *args:Any, **kwargs:Any) -> None:
+		levelID = Levels.getLevelIDByName("WARNING")
+		if self.isFiltered(levelID):
+			LoggerManager.emit(self.name, levelID, time(), message, args, kwargs)
+		return None
+	warning = warn
+	def error(self, message:str, /, *args:Any, **kwargs:Any) -> None:
+		levelID = Levels.getLevelIDByName("ERROR")
+		if self.isFiltered(levelID):
+			LoggerManager.emit(self.name, levelID, time(), message, args, kwargs)
+		return None
+	def critical(self, message:str, /, *args:Any, **kwargs:Any) -> None:
+		levelID = Levels.getLevelIDByName("CRITICAL")
+		if self.isFiltered(levelID):
+			LoggerManager.emit(self.name, levelID, time(), message, args, kwargs)
+		return None
+	fatal = critical
 
 # Finalizing imports
 from .levels import Levels

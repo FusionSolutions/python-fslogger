@@ -1,22 +1,67 @@
 # Builtin modules
 from __future__ import annotations
-import sys, atexit, traceback, unittest
+import sys, atexit, traceback
 from datetime import datetime
-from time import monotonic
+from time import time, monotonic
 from threading import RLock
-from typing import Dict, List, Any, cast, TextIO, Union, Iterable, Tuple, Optional, Callable
+from typing import Dict, List, Any, cast, TextIO, Union, Tuple, Optional
+# Third party modules
 # Local modules
 # Program
 DEF_FILTER:List[Dict[str, Any]] = [{ "*":"TRACE" }]
-DEF_FORMAT:str = "[{levelshortname}][{date}][{name}] : {message}\n"
-DEF_DATE:str = "%Y-%m-%d %H:%M:%S.%f"
+DEF_FORMAT = "[{levelshortname}][{date}][{name}] : {message}\n"
+DEF_DATE = "%Y-%m-%d %H:%M:%S.%f"
 
 class LoggerManager:
 	lock:RLock = RLock()
 	handler:Optional[LoggerManager] = None
 	filterChangeTime:float = monotonic()
 	groupSeperator:str = "."
-	def __init__(self, filter:Union[list, str, Filter]=DEF_FILTER, messageFormat:str=DEF_FORMAT, dateFormat:str=DEF_DATE,
+	@staticmethod
+	def getLogger(name:str) -> Logger:
+		return Logger(name)
+	@staticmethod
+	def getFilterData(name:str) -> Tuple[float, int]:
+		if isinstance(LoggerManager.handler, LoggerManager):
+			return LoggerManager.handler._getFilterData(name)
+		return LoggerManager.filterChangeTime, 0
+	def _getFilterData(self, name:str) -> Tuple[float, int]:
+		return (
+			self.filterChangeTime,
+			self.filter.getFilteredID(
+				name.split(self.groupSeperator)
+			)
+		)
+	@staticmethod
+	def emit(name:str, levelID:int, timestamp:float, message:Any, _args:Tuple[Any, ...], _kwargs:Dict[str, Any]) -> None:
+		if isinstance(LoggerManager.handler, LoggerManager):
+			LoggerManager.handler._emit(name, levelID, timestamp, message, _args, _kwargs)
+		return None
+	def _emit(self, name:str, levelID:int, timestamp:float, message:Any, _args:Tuple[Any, ...], _kwargs:Dict[str, Any]) -> None:
+		parsedMessage = self.messageFormatter(name, levelID, timestamp, message, _args, _kwargs)
+		with self.lock:
+			for handler in self.modules:
+				try: handler.emit(parsedMessage)
+				except: pass
+	@staticmethod
+	def extendFilter(data:Union[List[Any], str, Filter]) -> None:
+		if isinstance(LoggerManager.handler, LoggerManager):
+			LoggerManager.handler._extendFilter(data)
+		return None
+	def _extendFilter(self, data:Union[List[Any], str, Filter]) -> None:
+		filter = Filter(0)
+		if isinstance(data, list):
+			filter = FilterParser.fromJson(data)
+		elif isinstance(data, str):
+			filter = FilterParser.fromString(data)
+		assert isinstance(filter, Filter)
+		self.filter.extend(filter)
+	@staticmethod
+	def close() -> None:
+		if isinstance(LoggerManager.handler, LoggerManager):
+			LoggerManager.handler._close()
+		return None
+	def __init__(self, filter:Union[List[Any], str, Filter]=DEF_FILTER, messageFormat:str=DEF_FORMAT, dateFormat:str=DEF_DATE,
 	defaultLevel:Union[int, str]="WARNING", hookSTDOut:bool=True, hookSTDErr:bool=True):
 		if isinstance(self.handler, LoggerManager):
 			raise RuntimeError("LoggerManager already initialized")
@@ -36,46 +81,10 @@ class LoggerManager:
 		if hookSTDOut:
 			sys.stdout = cast(TextIO, STDOutModule())
 		atexit.register(self.close)
-	@staticmethod
-	def getFilterData(name:str) -> Tuple[float, int]:
-		if isinstance(LoggerManager.handler, LoggerManager):
-			return LoggerManager.handler._getFilterData(name)
-		return LoggerManager.filterChangeTime, 0
-	def _getFilterData(self, name:str) -> Tuple[float, int]:
-		return (
-			self.filterChangeTime,
-			self.filter.getFilteredID(
-				name.split(self.groupSeperator)
-			)
-		)
-	@staticmethod
-	def emit(name:str, levelID:int, timestamp:float, message:Any, _args:Tuple[Any, ...], _kwargs:Dict[str, Any]) -> None:
-		if isinstance(LoggerManager.handler, LoggerManager):
-			LoggerManager.handler._emit(name, levelID, timestamp, message, _args, _kwargs)
-	def _emit(self, name:str, levelID:int, timestamp:float, message:Any, _args:Tuple[Any, ...], _kwargs:Dict[str, Any]) -> None:
-		parsedMessage:str = self.messageFormatter(name, levelID, timestamp, message, _args, _kwargs)
-		with self.lock:
-			for handler in self.modules:
-				try: handler.emit(parsedMessage)
-				except: pass
-	@staticmethod
-	def extendFilter(data:Union[list, str, Filter]) -> None:
-		if isinstance(LoggerManager.handler, LoggerManager):
-			LoggerManager.handler._extendFilter(data)
-	def _extendFilter(self, data:Union[list, str, Filter]) -> None:
-		filter:Filter = Filter(0)
-		if isinstance(data, list):
-			filter = FilterParser.fromJson(data)
-		elif isinstance(data, str):
-			filter = FilterParser.fromString(data)
-		assert isinstance(filter, Filter)
-		self.filter.extend(filter)
-	@staticmethod
-	def close() -> None:
-		if isinstance(LoggerManager.handler, LoggerManager):
-			LoggerManager.handler._close()
+	def __del__(self) -> None:
+		self._close()
+		return None
 	def _close(self) -> None:
-		module:ModuleBase
 		for module in self.modules:
 			try:
 				module.close()
@@ -89,9 +98,7 @@ class LoggerManager:
 			sys.stdout.forceFlush()
 			sys.stdout = self._stdout
 		LoggerManager.handler = None
-	@staticmethod
-	def getLogger(self, name:str) -> "Logger":
-		return Logger(name)
+		return None
 	def messageFormatter(self, name:str, levelID:int, timestamp:float, message:str,
 	_args:Tuple[Any, ...], _kwargs:Dict[str, Any], datetime:Any=datetime) -> str:
 		args:Tuple[Any, ...] = tuple(map(lambda v: v() if callable(v) else v, _args))
@@ -108,17 +115,22 @@ class LoggerManager:
 		)
 	def initStandardOutStream(self) -> None:
 		self.modules.append( STDOutStreamingModule(self._stdout) )
+		return None
 	def initFileStream(self, fullPath:str) -> None:
 		self.modules.append( FileStream(fullPath) )
+		return None
 	def initRotatedFileStream(self, fullPath:str, maxBytes:int=0, rotateDaily:bool=False, maxBackup:Optional[int]=None) -> None:
 		self.modules.append( RotatedFileStream(fullPath, maxBytes, rotateDaily, maxBackup) )
+		return None
 	def initDailyFileStream(self, logPath:str, prefix:str, postfix:str, dateFormat:str="%Y-%m-%d") -> None:
 		self.modules.append( DailyFileStream(logPath, prefix, postfix, dateFormat) )
+		return None
 
 class DowngradedLoggerManager(LoggerManager):
-	import logging
-	def __init__(self):
+	def __init__(self) -> None:
 		LoggerManager.handler = self
+		if "logging" not in globals():
+			import logging
 		self.logging = logging
 	def _emit(self, name:str, levelID:int, timestamp:float, message:Any, _args:Tuple[Any, ...], _kwargs:Dict[str, Any]) -> None:
 		args:Tuple[Any, ...] = tuple(map(lambda v: v() if callable(v) else v, _args))
@@ -134,48 +146,13 @@ class DowngradedLoggerManager(LoggerManager):
 			}.get(Levels.getLevelNameByID(levelID), "NOTSET"), 0),
 			message.format(*args, **kwargs) if args or kwargs else message
 		)
+		return None
 	def _getFilterData(self, name:str) -> Tuple[float, int]:
 		return time(), 0
 
-class LoggerManagerTest(unittest.TestCase):
-	def test_first(self):
-		from tempfile import TemporaryDirectory
-		lm = LoggerManager(
-			messageFormat="[{levelshortname}][{name}] : {message}\n",
-			defaultLevel="TRACE",
-			hookSTDOut=False,
-			hookSTDErr=False
-		)
-		log = Logger("test")
-		lm.initStandardOutStream()
-		log.info("If you see this i'm working well")
-		with TemporaryDirectory() as tmpdir:
-			fn:str = "{}/teszt.log".format(tmpdir)
-			lm.initFileStream(fn)
-			log.info("Hello")
-			with open(fn, "rt") as fid:
-				self.assertEqual(fid.read(), "[INF][test] : Hello\n")
-		lm.close()
-	def test_second(self):
-		from tempfile import TemporaryDirectory
-		lm = LoggerManager(
-			messageFormat="[{levelshortname}][{name}] : {message}\n",
-			defaultLevel="TRACE",
-			hookSTDOut=True,
-			hookSTDErr=False
-		)
-		with TemporaryDirectory() as tmpdir:
-			fn:str = "{}/teszt.log".format(tmpdir)
-			lm.initFileStream(fn)
-			print("Hel", end="")
-			print("lo")
-			print("Hello")
-			with open(fn, "rt") as fid:
-				self.assertEqual(fid.read(), "[INF][Standard.Output] : Hello\n[INF][Standard.Output] : Hello\n")
-		lm.close()
-
 # Finalizing imports
-from .modules import *
+from .modules import (STDOutStreamingModule, ModuleBase, STDErrModule, STDOutModule, FileStream, RotatedFileStream,
+DailyFileStream)
 from .levels import Levels
 from .filters import Filter, FilterParser
 from .logger import Logger

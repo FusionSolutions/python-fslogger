@@ -4,22 +4,25 @@ from abc import ABCMeta, abstractmethod
 from glob import glob
 from datetime import datetime
 from functools import cmp_to_key
-from time import time
-from typing import List, Any, TextIO, Optional
+from typing import List, Any, Optional
+# Third party modules
 # Local modules
 # Program
 class STDErrModule:
+	log:Any
+	closed:bool
+	buffer:str
 	def __init__(self) -> None:
-		self.log:Any =Logger("Standard").getChild("Error")
-		self.closed:bool = False
-		self.buffer:str = ""
+		self.log    = Logger("Standard").getChild("Error")
+		self.closed = False
+		self.buffer = ""
 	def write(self, data:str) -> None:
 		if data:
 			self.buffer += data
 		self.flush()
 	def flush(self) -> None:
 		while "\n" in self.buffer:
-			pos:int = self.buffer.find("\n")
+			pos = self.buffer.find("\n")
 			self.log.error(self.buffer[:pos])
 			self.buffer = self.buffer[pos+1:]
 	def forceFlush(self) -> None:
@@ -29,17 +32,20 @@ class STDErrModule:
 		self.closed = True
 
 class STDOutModule:
+	log:Any
+	closed:bool
+	buffer:str
 	def __init__(self) -> None:
-		self.log:Any = Logger("Standard").getChild("Output")
-		self.closed:bool = False
-		self.buffer:str = ""
+		self.log    = Logger("Standard").getChild("Output")
+		self.closed = False
+		self.buffer = ""
 	def write(self, data:str) -> None:
 		if data:
 			self.buffer += data
 		self.flush()
 	def flush(self) -> None:
 		while "\n" in self.buffer:
-			pos:int = self.buffer.find("\n")
+			pos = self.buffer.find("\n")
 			self.log.info(self.buffer[:pos])
 			self.buffer = self.buffer[pos+1:]
 	def forceFlush(self) -> None:
@@ -55,8 +61,9 @@ class ModuleBase(metaclass=ABCMeta):
 	def close(self) -> None: pass
 
 class STDOutStreamingModule(ModuleBase):
+	stream:Any
 	def __init__(self, stream:Any):
-		self.stream:Any = stream
+		self.stream = stream
 	def emit(self, data:str) -> None:
 		if self.stream:
 			try:
@@ -65,14 +72,14 @@ class STDOutStreamingModule(ModuleBase):
 			except:
 				pass
 	def close(self) -> None:
-		if self.stream:
-			self.stream.close()
 		self.stream = None
 
 class FileStream(ModuleBase):
+	fullPath:str
+	stream:Any
 	def __init__(self, fullPath:str):
-		self.fullPath:str = fullPath
-		self.stream:Any = None
+		self.fullPath = fullPath
+		self.stream   = None
 		self.open()
 	def open(self) -> None:
 		try:
@@ -98,13 +105,18 @@ class FileStream(ModuleBase):
 		self.stream = None
 
 class RotatedFileStream(FileStream):
+	maxBytes:int
+	rotateDaily:bool
+	maxBackup:Optional[int]
+	lastRotate:Optional[str]
+	lastFileSize:Optional[int]
 	def __init__(self, fullPath:str, maxBytes:int=0, rotateDaily:bool=False, maxBackup:Optional[int]=None):
 		super().__init__(fullPath)
-		self.maxBytes:int = maxBytes
-		self.rotateDaily:bool = rotateDaily
-		self.maxBackup:Optional[int] = maxBackup
-		self.lastRotate:Optional[str] = None
-		self.lastFileSize:Optional[int] = None
+		self.maxBytes     = maxBytes
+		self.rotateDaily  = rotateDaily
+		self.maxBackup    = maxBackup
+		self.lastRotate   = None
+		self.lastFileSize = None
 	def emit(self, message:str) -> None:
 		if self.stream is not None:
 			if self.shouldRotate(message):
@@ -145,25 +157,18 @@ class RotatedFileStream(FileStream):
 					return int(r[0])
 				else:
 					return 0
-			q:int = parseFileNum(a)
-			w:int = parseFileNum(b)
-			if q > w:
-				return -1
-			else:
-				return 1
+			return -1 if parseFileNum(a) > parseFileNum(b) else 1
 		if len(glob("%s" % self.fullPath)) == 0:
 			return
 		files:List[str] = [self.fullPath] + glob("{}.[0-9]*".format(self.fullPath))
 		files.sort(key=cmp_to_key(sortFileNums))
 		tmpFiles:List[str] = []
-		file:str
 		for file in files:
 			if os.stat(file).st_size > 0:
 				os.rename(file, "{}_tmp".format(file))
 				tmpFiles.append("{}_tmp".format(file))
 			else:
 				os.remove(file)
-		i:int
 		for i, file in list(enumerate(tmpFiles[::-1])):
 			if self.maxBackup is not None and ( self.maxBackup == 0 or self.maxBackup < i ):
 				os.remove(file)
@@ -171,12 +176,17 @@ class RotatedFileStream(FileStream):
 				os.rename(file, "{}.{}".format( self.fullPath, str(i+1).zfill(3) ))
 
 class DailyFileStream(FileStream):
+	path:str
+	prefix:str
+	postfix:str
+	dateFormat:str
+	lastRotate:Optional[str]
 	def __init__(self, logPath:str, prefix:str="", postfix:str="", dateFormat:str="%Y-%m-%d"):
-		self.path:str = logPath
-		self.prefix:str = prefix
-		self.postfix:str = postfix
-		self.dateFormat:str = dateFormat
-		self.lastRotate:Optional[str] = None
+		self.path       = logPath
+		self.prefix     = prefix
+		self.postfix    = postfix
+		self.dateFormat = dateFormat
+		self.lastRotate = None
 		super().__init__(self.buildPath())
 	def buildPath(self) -> str:
 		return "{}/{}{}{}".format(
