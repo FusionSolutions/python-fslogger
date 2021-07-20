@@ -24,7 +24,7 @@ class Filter:
 		return self.keys[k.lower()] if k.lower() in self.keys else None
 	def getFilteredID(self, path:List[str]) -> int:
 		name = path.pop(0)
-		for key, val in reversed(self.keys.items()):
+		for key, val in self.keys.items().__reversed__():
 			if name == key or fnmatchcase(name, key):
 				if path:
 					return val.getFilteredID(path) or self.fallbackLevel
