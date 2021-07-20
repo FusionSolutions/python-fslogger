@@ -32,33 +32,33 @@ class Logger:
 		if isinstance(levelID, str):
 			levelID = Levels.parse(levelID)
 		return levelID >= self.lastFilterLevel
-	def trace(self, message:str, /, *args:Any, **kwargs:Any) -> None:
+	def trace(self, message:str, *args:Any, **kwargs:Any) -> None:
 		levelID = Levels.getLevelIDByName("TRACE")
 		if self.isFiltered(levelID):
 			LoggerManager.emit(self.name, levelID, time(), message, args, kwargs)
 		return None
-	def debug(self, message:str, /, *args:Any, **kwargs:Any) -> None:
+	def debug(self, message:str, *args:Any, **kwargs:Any) -> None:
 		levelID = Levels.getLevelIDByName("DEBUG")
 		if self.isFiltered(levelID):
 			LoggerManager.emit(self.name, levelID, time(), message, args, kwargs)
 		return None
-	def info(self, message:str, /, *args:Any, **kwargs:Any) -> None:
+	def info(self, message:str, *args:Any, **kwargs:Any) -> None:
 		levelID = Levels.getLevelIDByName("INFO")
 		if self.isFiltered(levelID):
 			LoggerManager.emit(self.name, levelID, time(), message, args, kwargs)
 		return None
-	def warn(self, message:str, /, *args:Any, **kwargs:Any) -> None:
+	def warn(self, message:str, *args:Any, **kwargs:Any) -> None:
 		levelID = Levels.getLevelIDByName("WARNING")
 		if self.isFiltered(levelID):
 			LoggerManager.emit(self.name, levelID, time(), message, args, kwargs)
 		return None
 	warning = warn
-	def error(self, message:str, /, *args:Any, **kwargs:Any) -> None:
+	def error(self, message:str, *args:Any, **kwargs:Any) -> None:
 		levelID = Levels.getLevelIDByName("ERROR")
 		if self.isFiltered(levelID):
 			LoggerManager.emit(self.name, levelID, time(), message, args, kwargs)
 		return None
-	def critical(self, message:str, /, *args:Any, **kwargs:Any) -> None:
+	def critical(self, message:str, *args:Any, **kwargs:Any) -> None:
 		levelID = Levels.getLevelIDByName("CRITICAL")
 		if self.isFiltered(levelID):
 			LoggerManager.emit(self.name, levelID, time(), message, args, kwargs)
