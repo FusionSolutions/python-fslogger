@@ -1,4 +1,4 @@
-__version__ = "0.0.3"
+__version__ = "0.0.4"
 __doc__ = """
 Logging utility v{}
 Copyright (C) 2021 Fusion Solutions KFT <contact@fusionsolutions.io>
@@ -36,4 +36,4 @@ def downgradeLoggerManager() -> LoggerManager:
 		root = DowngradedLoggerManager()
 	return root
 
-__all__ = "LoggerManager", "Logger", "Levels", "FilterParser", "SimpleLogger", "downgradeLoggerManager"
+__all__ = "LoggerManager", "Logger", "Levels", "Filter", "FilterParser", "SimpleLogger", "downgradeLoggerManager"
