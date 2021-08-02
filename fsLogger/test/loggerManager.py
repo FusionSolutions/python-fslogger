@@ -1,4 +1,5 @@
 # Builtin modules
+from __future__ import annotations
 import unittest
 from tempfile import TemporaryDirectory
 # Third party modules

@@ -7,84 +7,67 @@ from threading import RLock
 from typing import Dict, List, Any, cast, TextIO, Union, Tuple, Optional
 # Third party modules
 # Local modules
+from .globHandler import _GlobHandler
+from .abcs import T_LoggerManager, T_Filter
+from .filters import Filter, FilterParser
+from .modules import STDOutStreamingModule, STDErrModule, STDOutModule, FileStream, RotatedFileStream, DailyFileStream
+from .levels import Levels
 # Program
-DEF_FILTER:List[Dict[str, Any]] = [{ "*":"TRACE" }]
+DEF_LEVEL = "WARNING"
 DEF_FORMAT = "[{levelshortname}][{date}][{name}] : {message}\n"
 DEF_DATE = "%Y-%m-%d %H:%M:%S.%f"
 
-class LoggerManager:
-	lock:RLock = RLock()
-	handler:Optional[LoggerManager] = None
-	filterChangeTime:float = monotonic()
-	groupSeperator:str = "."
+class LoggerManager(T_LoggerManager):
+	lock = RLock()
+	filterChangeTime = monotonic()
+	groupSeperator = "."
 	@staticmethod
-	def getLogger(name:str) -> Logger:
-		return Logger(name)
-	@staticmethod
-	def getFilterData(name:str) -> Tuple[float, int]:
-		if isinstance(LoggerManager.handler, LoggerManager):
-			return LoggerManager.handler._getFilterData(name)
-		return LoggerManager.filterChangeTime, 0
-	def _getFilterData(self, name:str) -> Tuple[float, int]:
+	def getHandler() -> Optional[T_LoggerManager]:
+		return _GlobHandler.get()
+	def __init__(self, filter:Optional[Union[List[Any], str, T_Filter]]=None, messageFormat:str=DEF_FORMAT,
+	dateFormat:str=DEF_DATE, defaultLevel:Optional[Union[int, str]]=None, hookSTDOut:bool=True, hookSTDErr:bool=True):
+		_GlobHandler.activate(self)
+		self.filter        = Filter(Levels.parse(DEF_LEVEL if defaultLevel is None else defaultLevel ))
+		if filter is not None:
+			self.extendFilter(filter)
+		self.delta         = monotonic()
+		self.messageFormat = messageFormat
+		self.dateFormat    = dateFormat
+		self.modules       = []
+		self._stderr       = sys.stderr
+		self._stdout       = sys.stdout
+		self._excepthook   = sys.excepthook
+		if hookSTDErr:
+			sys.stderr     = cast(TextIO, STDErrModule())
+			sys.excepthook = lambda *a: sys.stderr.write("".join(traceback.format_exception(*a)))
+		if hookSTDOut:
+			sys.stdout = cast(TextIO, STDOutModule())
+		atexit.register(self.close)
+	def __del__(self) -> None:
+		self.close()
+		return None
+	def getFilterData(self, name:str) -> Tuple[float, int]:
 		return (
 			self.filterChangeTime,
 			self.filter.getFilteredID(
 				name.split(self.groupSeperator)
 			)
 		)
-	@staticmethod
-	def emit(name:str, levelID:int, timestamp:float, message:Any, _args:Tuple[Any, ...], _kwargs:Dict[str, Any]) -> None:
-		if isinstance(LoggerManager.handler, LoggerManager):
-			LoggerManager.handler._emit(name, levelID, timestamp, message, _args, _kwargs)
-		return None
-	def _emit(self, name:str, levelID:int, timestamp:float, message:Any, _args:Tuple[Any, ...], _kwargs:Dict[str, Any]) -> None:
+	def emit(self, name:str, levelID:int, timestamp:float, message:Any, _args:Tuple[Any, ...], _kwargs:Dict[str, Any]) -> None:
 		parsedMessage = self.messageFormatter(name, levelID, timestamp, message, _args, _kwargs)
 		with self.lock:
 			for handler in self.modules:
 				try: handler.emit(parsedMessage)
 				except: pass
-	@staticmethod
-	def extendFilter(data:Union[List[Any], str, Filter]) -> None:
-		if isinstance(LoggerManager.handler, LoggerManager):
-			LoggerManager.handler._extendFilter(data)
-		return None
-	def _extendFilter(self, data:Union[List[Any], str, Filter]) -> None:
-		filter = Filter(0)
+	def extendFilter(self, data:Union[List[Any], str, T_Filter]) -> None:
+		filter:T_Filter = Filter(0)
 		if isinstance(data, list):
 			filter = FilterParser.fromJson(data)
 		elif isinstance(data, str):
 			filter = FilterParser.fromString(data)
-		assert isinstance(filter, Filter)
+		assert isinstance(filter, T_Filter)
 		self.filter.extend(filter)
-	@staticmethod
-	def close() -> None:
-		if isinstance(LoggerManager.handler, LoggerManager):
-			LoggerManager.handler._close()
-		return None
-	def __init__(self, filter:Union[List[Any], str, Filter]=DEF_FILTER, messageFormat:str=DEF_FORMAT, dateFormat:str=DEF_DATE,
-	defaultLevel:Union[int, str]="WARNING", hookSTDOut:bool=True, hookSTDErr:bool=True):
-		if isinstance(self.handler, LoggerManager):
-			raise RuntimeError("LoggerManager already initialized")
-		LoggerManager.handler = self
-		self.delta:float = monotonic()
-		self.messageFormat:str = messageFormat
-		self.dateFormat:str = dateFormat
-		self.modules:List[ModuleBase] = []
-		self.filter:Filter = Filter(Levels.parse(defaultLevel))
-		self._extendFilter(filter)
-		self._stderr:TextIO = sys.stderr
-		self._stdout:TextIO = sys.stdout
-		self._excepthook:Any = sys.excepthook
-		if hookSTDErr:
-			sys.stderr = cast(TextIO, STDErrModule())
-			sys.excepthook = lambda *a: sys.stderr.write("".join(traceback.format_exception(*a)))
-		if hookSTDOut:
-			sys.stdout = cast(TextIO, STDOutModule())
-		atexit.register(self.close)
-	def __del__(self) -> None:
-		self._close()
-		return None
-	def _close(self) -> None:
+	def close(self) -> None:
 		for module in self.modules:
 			try:
 				module.close()
@@ -97,7 +80,7 @@ class LoggerManager:
 		if isinstance(sys.stdout, STDOutModule):
 			sys.stdout.forceFlush()
 			sys.stdout = self._stdout
-		LoggerManager.handler = None
+		_GlobHandler.clear()
 		return None
 	def messageFormatter(self, name:str, levelID:int, timestamp:float, message:str,
 	_args:Tuple[Any, ...], _kwargs:Dict[str, Any], datetime:Any=datetime) -> str:
@@ -128,7 +111,7 @@ class LoggerManager:
 
 class DowngradedLoggerManager(LoggerManager):
 	def __init__(self) -> None:
-		LoggerManager.handler = self
+		_GlobHandler.activate(self)
 		if "logging" not in globals():
 			import logging
 		self.logging = logging
@@ -149,10 +132,3 @@ class DowngradedLoggerManager(LoggerManager):
 		return None
 	def _getFilterData(self, name:str) -> Tuple[float, int]:
 		return time(), 0
-
-# Finalizing imports
-from .modules import (STDOutStreamingModule, ModuleBase, STDErrModule, STDOutModule, FileStream, RotatedFileStream,
-DailyFileStream)
-from .levels import Levels
-from .filters import Filter, FilterParser
-from .logger import Logger

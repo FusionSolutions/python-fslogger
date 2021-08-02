@@ -1,15 +1,17 @@
 # Builtin modules
+from __future__ import annotations
 import re, os, traceback
-from abc import ABCMeta, abstractmethod
 from glob import glob
 from datetime import datetime
 from functools import cmp_to_key
 from typing import List, Any, Optional
 # Third party modules
 # Local modules
+from .abcs import T_ModuleBase, T_Logger
+from .logger import Logger
 # Program
 class STDErrModule:
-	log:Any
+	log:T_Logger
 	closed:bool
 	buffer:str
 	def __init__(self) -> None:
@@ -32,7 +34,7 @@ class STDErrModule:
 		self.closed = True
 
 class STDOutModule:
-	log:Any
+	log:T_Logger
 	closed:bool
 	buffer:str
 	def __init__(self) -> None:
@@ -54,13 +56,7 @@ class STDOutModule:
 	def close(self) -> None:
 		self.closed = True
 
-class ModuleBase(metaclass=ABCMeta):
-	@abstractmethod
-	def emit(self, data:str) -> None: pass
-	@abstractmethod
-	def close(self) -> None: pass
-
-class STDOutStreamingModule(ModuleBase):
+class STDOutStreamingModule(T_ModuleBase):
 	stream:Any
 	def __init__(self, stream:Any):
 		self.stream = stream
@@ -74,7 +70,7 @@ class STDOutStreamingModule(ModuleBase):
 	def close(self) -> None:
 		self.stream = None
 
-class FileStream(ModuleBase):
+class FileStream(T_ModuleBase):
 	fullPath:str
 	stream:Any
 	def __init__(self, fullPath:str):
@@ -211,6 +207,4 @@ class DailyFileStream(FileStream):
 			self.stream = None
 		self.fullPath = self.buildPath()
 		self.open()
-
-# Finalizing imports
-from .logger import Logger
+		return None

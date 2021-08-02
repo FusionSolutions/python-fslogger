@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import os, shutil
+import os
 import fsLogger
 try:
 	from setuptools import setup

@@ -1,4 +1,5 @@
-__version__ = "0.0.4"
+from __future__ import annotations
+__version__ = "0.1.0"
 __doc__ = """
 Logging utility v{}
 Copyright (C) 2021 Fusion Solutions KFT <contact@fusionsolutions.io>
@@ -16,24 +17,32 @@ GNU General Public License for more details.
 You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/lgpl.txt>.
 """.format(__version__)
-from typing import Union, Optional
+# Builtin modules
+from typing import Union, cast
+# Third party modules
+# Local modules
+from .globHandler import _GlobHandler
 from .levels import Levels
 from .filters import Filter, FilterParser
 from .logger import Logger
 from .loggerManager import LoggerManager, DowngradedLoggerManager
+from .abcs import T_LoggerManager
+# Program
+def SimpleLogger(level:Union[str, int]="TRACE") -> T_LoggerManager:
+	lm:T_LoggerManager
+	if not _GlobHandler.isActive():
+		lm = LoggerManager(defaultLevel=level)
+		lm.initStandardOutStream()
+	else:
+		lm = cast(T_LoggerManager, _GlobHandler.get())
+	return lm
 
-root:Optional[LoggerManager] = None
-def SimpleLogger(level:Union[str, int]="TRACE") -> LoggerManager:
-	global root
-	if not isinstance(root, LoggerManager):
-		root = LoggerManager(defaultLevel=level)
-		root.initStandardOutStream()
-	return root
+def downgradeLoggerManager() -> T_LoggerManager:
+	lm:T_LoggerManager
+	if not _GlobHandler.isActive():
+		lm = DowngradedLoggerManager()
+	else:
+		lm = cast(T_LoggerManager, _GlobHandler.get())
+	return lm
 
-def downgradeLoggerManager() -> LoggerManager:
-	global root
-	if not isinstance(root, LoggerManager):
-		root = DowngradedLoggerManager()
-	return root
-
-__all__ = "LoggerManager", "Logger", "Levels", "Filter", "FilterParser", "SimpleLogger", "downgradeLoggerManager"
+__all__ = "LoggerManager", "Logger", "Levels", "Filter", "FilterParser", "SimpleLogger", "DowngradeLoggerManager"
