@@ -1,5 +1,5 @@
 from __future__ import annotations
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 __doc__ = """
 Logging utility v{}
 Copyright (C) 2021 Fusion Solutions KFT <contact@fusionsolutions.io>
@@ -45,4 +45,4 @@ def downgradeLoggerManager() -> T_LoggerManager:
 		lm = cast(T_LoggerManager, _GlobHandler.get())
 	return lm
 
-__all__ = "LoggerManager", "Logger", "Levels", "Filter", "FilterParser", "SimpleLogger", "DowngradeLoggerManager"
+__all__ = "LoggerManager", "Logger", "Levels", "Filter", "FilterParser", "SimpleLogger", "downgradeLoggerManager"

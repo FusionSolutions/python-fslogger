@@ -13,7 +13,7 @@ setup(
 	version = fsLogger.__version__,
 	description = "Logging utility",
 	keywords = "logging utility fusion solutions fusionsolutions",
-	author = "Andor `iFA88` Rajci - Fusions Solutions KFT",
+	author = "Andor `iFA` Rajci - Fusions Solutions KFT",
 	author_email = "ifa@fusionsolutions.io",
 	url = "https://github.com/FusionSolutions/python-fslogger",
 	license = "GPL-3",
