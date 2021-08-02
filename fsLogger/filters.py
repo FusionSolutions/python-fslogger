@@ -5,22 +5,22 @@ from typing import Dict, List, Any, Union, Optional, cast
 from collections import OrderedDict
 # Third party modules
 # Local modules
-from . import Levels
+from .globHandler import _GlobHandler
+from .abcs import T_Filter
+from .levels import Levels
 # Program
-class Filter:
-	__slots__ = "keys", "fallbackLevel",
-	keys:Dict[str, Filter]
-	fallbackLevel:int
+class Filter(T_Filter):
+	__slots__ = ("keys", "fallbackLevel")
 	def __init__(self, fallbackLevel:int) -> None:
-		self.keys          = cast(Dict[str, Filter], OrderedDict())
+		self.keys          = cast(Dict[str, T_Filter], OrderedDict())
 		self.fallbackLevel = fallbackLevel
-	def addLogger(self, k:str, v:Filter) -> Filter:
+	def addLogger(self, k:str, v:T_Filter) -> T_Filter:
 		self.keys[k] = v
 		return self
 	def setFallbackLevel(self, level:Union[int, str]) -> None:
 		self.fallbackLevel = Levels.parse(level)
 		return None
-	def getKey(self, k:str) -> Optional[Filter]:
+	def getKey(self, k:str) -> Optional[T_Filter]:
 		return self.keys[k.lower()] if k.lower() in self.keys else None
 	def getFilteredID(self, path:List[str]) -> int:
 		name = path.pop(0)
@@ -36,7 +36,7 @@ class Filter:
 		for key, val in self.keys.items():
 			ret.append({ key:val.dump() })
 		return ret
-	def extend(self, inp:Filter) -> None:
+	def extend(self, inp:T_Filter) -> None:
 		if inp.fallbackLevel != 0:
 			self.fallbackLevel = inp.fallbackLevel
 		for key, val in inp.keys.items():
@@ -46,10 +46,11 @@ class Filter:
 				if key not in self.keys:
 					self.keys[key] = Filter(0)
 				self.keys[key].extend(val)
+		return None
 
 class FilterParser:
 	@staticmethod
-	def fromString(data:str) -> Filter:
+	def fromString(data:str) -> T_Filter:
 		"""
 		parent:ERROR,parent.children.son:WARNING
 		->
@@ -66,15 +67,11 @@ class FilterParser:
 			]}
 		]
 		"""
-		paths:List[str]
-		rawPaths:str
-		levelID:str
-		lastScope:Filter
-		ret:Filter = Filter(0)
-		i:int
+		lastScope:T_Filter
+		ret = Filter(0)
 		for part in data.lower().split(","):
 			rawPaths, levelID = part.split(":")
-			paths = rawPaths.split(LoggerManager.groupSeperator)
+			paths = rawPaths.split(_GlobHandler.getGroupSeperator())
 			lastScope = ret
 			for i, path in enumerate(paths):
 				if path not in lastScope.keys:
@@ -82,7 +79,7 @@ class FilterParser:
 				lastScope = lastScope.keys[path]
 		return ret
 	@classmethod
-	def fromJson(cls, datas:List[Any]) -> Filter:
+	def fromJson(cls, datas:List[Any]) -> T_Filter:
 		"""
 		[
 			{ "parent": [
@@ -108,8 +105,7 @@ class FilterParser:
 			]}
 		]
 		"""
-		data:Dict[str, Any]
-		ret:Filter = Filter(0)
+		ret = Filter(0)
 		for data in datas:
 			for key in data.keys():
 				if isinstance(data[key], list):
@@ -121,4 +117,3 @@ class FilterParser:
 					ret.keys[key.lower()] = cls.fromJson([ {"*": Levels.parse(data[key])} ])
 		return ret
 
-from .loggerManager import LoggerManager

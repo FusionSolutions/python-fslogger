@@ -4,11 +4,18 @@ from typing import List, Any
 # Third party modules
 # Local modules
 from .. import LoggerManager, FilterParser
+from ..globHandler import _GlobHandler
 # Program
 class FilterTest(unittest.TestCase):
 	def test(self) -> None:
-		_old = LoggerManager.groupSeperator
-		LoggerManager.groupSeperator = "-"
+		lm = LoggerManager(
+			messageFormat="[{levelshortname}][{name}] : {message}\n",
+			defaultLevel="TRACE",
+			hookSTDOut=False,
+			hookSTDErr=False
+		)
+		_old = _GlobHandler.getGroupSeperator()
+		_GlobHandler.setGroupSeperator("-")
 		beforeFilterData:List[Any] = [
 			{ "server": [
 				{ "client": [
@@ -93,5 +100,6 @@ class FilterTest(unittest.TestCase):
 		self.assertEqual( filter.getFilteredID(["server", "client", "192.168.2.3", "somewhat"]), 50 )
 		self.assertEqual( filter.getFilteredID(["server", "client", "192.168.2.4"]), 50 )
 		self.assertEqual( filter.getFilteredID(["server", "client", "192.168.2.4", "somewhat"]), 50 )
-		LoggerManager.groupSeperator = _old
+		_GlobHandler.setGroupSeperator(_old)
+		lm.close()
 		return None
