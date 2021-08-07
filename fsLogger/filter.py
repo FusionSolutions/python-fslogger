@@ -110,7 +110,7 @@ class FilterParser:
 		for data in datas:
 			for key in data.keys():
 				if isinstance(data[key], list):
-					ret.keys[key] = cls.fromJson(data[key])
+					ret.keys[key.lower()] = cls.fromJson(data[key])
 				elif key == "*":
 					ret.fallbackLevel = Levels.parse(data[key])
 				else:
