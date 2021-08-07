@@ -6,21 +6,22 @@ from collections import OrderedDict
 # Third party modules
 # Local modules
 from .globHandler import _GlobHandler
-from .abcs import T_Filter
 from .levels import Levels
 # Program
-class Filter(T_Filter):
+class Filter:
+	keys:Dict[str, Filter]
+	fallbackLevel:int
 	__slots__ = ("keys", "fallbackLevel")
 	def __init__(self, fallbackLevel:int) -> None:
-		self.keys          = cast(Dict[str, T_Filter], OrderedDict())
+		self.keys          = cast(Dict[str, Filter], OrderedDict())
 		self.fallbackLevel = fallbackLevel
-	def addLogger(self, k:str, v:T_Filter) -> T_Filter:
+	def addLogger(self, k:str, v:Filter) -> Filter:
 		self.keys[k] = v
 		return self
 	def setFallbackLevel(self, level:Union[int, str]) -> None:
 		self.fallbackLevel = Levels.parse(level)
 		return None
-	def getKey(self, k:str) -> Optional[T_Filter]:
+	def getKey(self, k:str) -> Optional[Filter]:
 		return self.keys[k.lower()] if k.lower() in self.keys else None
 	def getFilteredID(self, path:List[str]) -> int:
 		name = path.pop(0)
@@ -36,7 +37,7 @@ class Filter(T_Filter):
 		for key, val in self.keys.items():
 			ret.append({ key:val.dump() })
 		return ret
-	def extend(self, inp:T_Filter) -> None:
+	def extend(self, inp:Filter) -> None:
 		if inp.fallbackLevel != 0:
 			self.fallbackLevel = inp.fallbackLevel
 		for key, val in inp.keys.items():
@@ -50,7 +51,7 @@ class Filter(T_Filter):
 
 class FilterParser:
 	@staticmethod
-	def fromString(data:str) -> T_Filter:
+	def fromString(data:str) -> Filter:
 		"""
 		parent:ERROR,parent.children.son:WARNING
 		->
@@ -67,7 +68,7 @@ class FilterParser:
 			]}
 		]
 		"""
-		lastScope:T_Filter
+		lastScope:Filter
 		ret = Filter(0)
 		for part in data.lower().split(","):
 			rawPaths, levelID = part.split(":")
@@ -79,7 +80,7 @@ class FilterParser:
 				lastScope = lastScope.keys[path]
 		return ret
 	@classmethod
-	def fromJson(cls, datas:List[Any]) -> T_Filter:
+	def fromJson(cls, datas:List[Any]) -> Filter:
 		"""
 		[
 			{ "parent": [

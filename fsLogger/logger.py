@@ -6,11 +6,13 @@ from time import time
 # Local modules
 from .globHandler import _GlobHandler
 from .levels import Levels
-from .abcs import T_Logger
 # Program
-class Logger(T_Logger):
+class Logger:
+	name:str
+	filterChangeTime:float
+	lastFilterLevel:int
 	__slots__ = ( "name", "filterChangeTime", "lastFilterLevel" )
-	def __init__(self, name:Union[str, T_Logger]):
+	def __init__(self, name:Union[str, Logger]):
 		if isinstance(name, Logger):
 			name = name.name
 		self.__setstate__({ "name":name, "filterChangeTime":0, "lastFilterLevel":0 })
@@ -24,7 +26,7 @@ class Logger(T_Logger):
 		self.name = states["name"]
 		self.filterChangeTime = states["filterChangeTime"]
 		self.lastFilterLevel = states["lastFilterLevel"]
-	def getChild(self, name:str) -> T_Logger:
+	def getChild(self, name:str) -> Logger:
 		return Logger("{}{}{}".format(self.name, _GlobHandler.getGroupSeperator(), name))
 	def isFiltered(self, levelID:Union[int, str]) -> bool:
 		if self.filterChangeTime != _GlobHandler.getFilterChangeTime():

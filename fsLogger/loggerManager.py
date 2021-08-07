@@ -2,14 +2,14 @@
 from __future__ import annotations
 import sys, atexit, traceback
 from datetime import datetime
-from time import time, monotonic
+from time import monotonic
 from threading import RLock
 from typing import Dict, List, Any, cast, TextIO, Union, Tuple, Optional
 # Third party modules
 # Local modules
 from .globHandler import _GlobHandler
-from .abcs import T_LoggerManager, T_Filter
-from .filters import Filter, FilterParser
+from .abcs import T_LoggerManager
+from .filter import Filter, FilterParser
 from .modules import STDOutStreamingModule, STDErrModule, STDOutModule, FileStream, RotatedFileStream, DailyFileStream
 from .levels import Levels
 # Program
@@ -24,7 +24,7 @@ class LoggerManager(T_LoggerManager):
 	@staticmethod
 	def getHandler() -> Optional[T_LoggerManager]:
 		return _GlobHandler.get()
-	def __init__(self, filter:Optional[Union[List[Any], str, T_Filter]]=None, messageFormat:str=DEF_FORMAT,
+	def __init__(self, filter:Optional[Union[List[Any], str, Filter]]=None, messageFormat:str=DEF_FORMAT,
 	dateFormat:str=DEF_DATE, defaultLevel:Optional[Union[int, str]]=None, hookSTDOut:bool=True, hookSTDErr:bool=True):
 		_GlobHandler.activate(self)
 		self.filter        = Filter(Levels.parse(DEF_LEVEL if defaultLevel is None else defaultLevel ))
@@ -50,7 +50,7 @@ class LoggerManager(T_LoggerManager):
 		return (
 			self.filterChangeTime,
 			self.filter.getFilteredID(
-				name.split(self.groupSeperator)
+				name.lower().split(self.groupSeperator)
 			)
 		)
 	def emit(self, name:str, levelID:int, timestamp:float, message:Any, _args:Tuple[Any, ...], _kwargs:Dict[str, Any]) -> None:
@@ -59,13 +59,13 @@ class LoggerManager(T_LoggerManager):
 			for handler in self.modules:
 				try: handler.emit(parsedMessage)
 				except: pass
-	def extendFilter(self, data:Union[List[Any], str, T_Filter]) -> None:
-		filter:T_Filter = Filter(0)
+	def extendFilter(self, data:Union[List[Any], str, Filter]) -> None:
+		filter = Filter(0)
 		if isinstance(data, list):
 			filter = FilterParser.fromJson(data)
 		elif isinstance(data, str):
 			filter = FilterParser.fromString(data)
-		assert isinstance(filter, T_Filter)
+		assert isinstance(filter, Filter)
 		self.filter.extend(filter)
 	def close(self) -> None:
 		for module in self.modules:
@@ -131,4 +131,4 @@ class DowngradedLoggerManager(LoggerManager):
 		)
 		return None
 	def _getFilterData(self, name:str) -> Tuple[float, int]:
-		return time(), 0
+		return monotonic(), 0
