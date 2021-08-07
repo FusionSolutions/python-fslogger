@@ -1,9 +1,9 @@
 # Builtin modules
 from __future__ import annotations
-from typing import Tuple, List, Any, Dict, Union, Optional
+from typing import Tuple, Any, Dict, Optional
 # Third party modules
 # Local modules
-from .abcs import T_LoggerManager, T_Filter
+from .abcs import T_LoggerManager
 # Program
 class _GlobHandler:
 	handler:Optional[T_LoggerManager] = None
@@ -12,21 +12,6 @@ class _GlobHandler:
 		if isinstance(cls.handler, T_LoggerManager):
 			cls.handler.close()
 		return None
-	@classmethod
-	def emit(cls, name:str, levelID:int, timestamp:float, message:Any, _args:Tuple[Any, ...], _kwargs:Dict[str, Any]) -> None:
-		if isinstance(cls.handler, T_LoggerManager):
-			cls.handler.emit(name, levelID, timestamp, message, _args, _kwargs)
-		return None
-	@classmethod
-	def extendFilter(cls, data:Union[List[Any], str, T_Filter]) -> None:
-		if isinstance(cls.handler, T_LoggerManager):
-			cls.handler.extendFilter(data)
-		return None
-	@classmethod
-	def getFilterData(cls, name:str) -> Tuple[float, int]:
-		if isinstance(cls.handler, T_LoggerManager):
-			return cls.handler.getFilterData(name)
-		return 0.0, 0
 	@classmethod
 	def isActive(cls) -> bool:
 		return isinstance(cls.handler, T_LoggerManager)
@@ -57,3 +42,13 @@ class _GlobHandler:
 		if isinstance(cls.handler, T_LoggerManager):
 			return cls.handler.filterChangeTime
 		return 0.0
+	@classmethod
+	def emit(cls, name:str, levelID:int, timestamp:float, message:Any, _args:Tuple[Any, ...], _kwargs:Dict[str, Any]) -> None:
+		if isinstance(cls.handler, T_LoggerManager):
+			cls.handler.emit(name, levelID, timestamp, message, _args, _kwargs)
+		return None
+	@classmethod
+	def getFilterData(cls, name:str) -> Tuple[float, int]:
+		if isinstance(cls.handler, T_LoggerManager):
+			return cls.handler.getFilterData(name)
+		return 0.0, 0

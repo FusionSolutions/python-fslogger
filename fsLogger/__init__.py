@@ -1,5 +1,5 @@
 from __future__ import annotations
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 __doc__ = """
 Logging utility v{}
 Copyright (C) 2021 Fusion Solutions KFT <contact@fusionsolutions.io>
@@ -23,7 +23,7 @@ from typing import Union, cast
 # Local modules
 from .globHandler import _GlobHandler
 from .levels import Levels
-from .filters import Filter, FilterParser
+from .filter import Filter, FilterParser
 from .logger import Logger
 from .loggerManager import LoggerManager, DowngradedLoggerManager
 from .abcs import T_LoggerManager

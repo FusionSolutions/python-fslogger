@@ -2,16 +2,15 @@
 from __future__ import annotations
 import re, os, traceback
 from glob import glob
-from datetime import datetime
-from functools import cmp_to_key
-from typing import List, Any, Optional
+from datetime import datetime, timezone
+from typing import List, Tuple, Any, Optional
 # Third party modules
 # Local modules
-from .abcs import T_ModuleBase, T_Logger
+from .abcs import T_ModuleBase
 from .logger import Logger
 # Program
 class STDErrModule:
-	log:T_Logger
+	log:Logger
 	closed:bool
 	buffer:str
 	def __init__(self) -> None:
@@ -34,7 +33,7 @@ class STDErrModule:
 		self.closed = True
 
 class STDOutModule:
-	log:T_Logger
+	log:Logger
 	closed:bool
 	buffer:str
 	def __init__(self) -> None:
@@ -104,15 +103,17 @@ class RotatedFileStream(FileStream):
 	maxBytes:int
 	rotateDaily:bool
 	maxBackup:Optional[int]
-	lastRotate:Optional[str]
+	lastRotate:Optional[int]
 	lastFileSize:Optional[int]
-	def __init__(self, fullPath:str, maxBytes:int=0, rotateDaily:bool=False, maxBackup:Optional[int]=None):
+	def __init__(self, fullPath:str, maxBytes:int=0, rotateDaily:bool=False, maxBackup:Optional[int]=None,
+	useUTCTimezone:bool=True):
 		super().__init__(fullPath)
-		self.maxBytes     = maxBytes
-		self.rotateDaily  = rotateDaily
-		self.maxBackup    = maxBackup
-		self.lastRotate   = None
-		self.lastFileSize = None
+		self.maxBytes                    = maxBytes
+		self.rotateDaily                 = rotateDaily
+		self.maxBackup                   = maxBackup
+		self.lastRotate                  = None
+		self.lastFileSize                = None
+		self.timezone:Optional[timezone] = timezone.utc if useUTCTimezone else None
 	def emit(self, message:str) -> None:
 		if self.stream is not None:
 			if self.shouldRotate(message):
@@ -120,7 +121,7 @@ class RotatedFileStream(FileStream):
 			super().emit(message)
 	def shouldRotate(self, message:str) -> bool:
 		if self.lastRotate is None:
-			self.lastRotate = datetime.utcnow().strftime("%D")
+			self.lastRotate = datetime.now(self.timezone).day
 			return True
 		if self.maxBytes > 0:
 			if self.lastFileSize is None:
@@ -130,8 +131,8 @@ class RotatedFileStream(FileStream):
 			if self.lastFileSize >= self.maxBytes:
 				return True
 		if self.rotateDaily:
-			if self.lastRotate != datetime.utcnow().strftime("%D"):
-				self.lastRotate = datetime.utcnow().strftime("%D")
+			if self.lastRotate != datetime.now(self.timezone).day:
+				self.lastRotate = datetime.now(self.timezone).day
 				return True
 		return False
 	def doRotate(self) -> None:
@@ -144,52 +145,40 @@ class RotatedFileStream(FileStream):
 			traceback.print_exc()
 		self.open()
 	def shiftLogFiles(self) -> None:
-		def sortFileNums(a:str, b:str) -> int:
-			def parseFileNum(e:str) -> int:
-				if not e:
-					return 0
-				r = re.findall(r'^.*[^\.]\.([0-9]*)$', e)
-				if r:
-					return int(r[0])
-				else:
-					return 0
-			return -1 if parseFileNum(a) > parseFileNum(b) else 1
-		if len(glob("%s" % self.fullPath)) == 0:
+		def sortFileNums(e:str) -> Tuple[int, str]:
+			r = re.findall(r'^.*[^\.]\.([0-9]*)$', e)
+			if r:
+				return int(r[0]), e
+			else:
+				return 0, e
+		if os.path.isdir(os.path.dirname(self.fullPath)):
 			return
-		files:List[str] = [self.fullPath] + glob("{}.[0-9]*".format(self.fullPath))
-		files.sort(key=cmp_to_key(sortFileNums))
-		tmpFiles:List[str] = []
-		for file in files:
-			if os.stat(file).st_size > 0:
-				os.rename(file, "{}_tmp".format(file))
-				tmpFiles.append("{}_tmp".format(file))
-			else:
-				os.remove(file)
-		for i, file in list(enumerate(tmpFiles[::-1])):
-			if self.maxBackup is not None and ( self.maxBackup == 0 or self.maxBackup < i ):
-				os.remove(file)
-			else:
-				os.rename(file, "{}.{}".format( self.fullPath, str(i+1).zfill(3) ))
+		files:List[Tuple[int, str]] = sorted(list(map(sortFileNums, glob(self.fullPath+"*"))), key=lambda x: x[0], reverse=True)
+		for n, f in files:
+			os.rename(f, "{}.{:>03}".format(self.fullPath, n+1))
 
 class DailyFileStream(FileStream):
 	path:str
 	prefix:str
 	postfix:str
 	dateFormat:str
-	lastRotate:Optional[str]
-	def __init__(self, logPath:str, prefix:str="", postfix:str="", dateFormat:str="%Y-%m-%d"):
-		self.path       = logPath
-		self.prefix     = prefix
-		self.postfix    = postfix
-		self.dateFormat = dateFormat
-		self.lastRotate = None
+	lastRotate:Optional[int]
+	def __init__(self, path:str, prefix:str="", postfix:str="", dateFormat:str="%Y-%m-%d", useUTCTimezone:bool=True):
+		self.path                        = path
+		self.prefix                      = prefix
+		self.postfix                     = postfix
+		self.dateFormat                  = dateFormat
+		self.lastRotate                  = None
+		self.timezone:Optional[timezone] = timezone.utc if useUTCTimezone else None
 		super().__init__(self.buildPath())
 	def buildPath(self) -> str:
-		return "{}/{}{}{}".format(
+		return os.path.join(
 			self.path,
-			self.prefix,
-			datetime.utcnow().strftime(self.dateFormat),
-			self.postfix,
+			"{}{}{}".format(
+				self.prefix,
+				datetime.now(self.timezone).strftime(self.dateFormat),
+				self.postfix,
+			)
 		)
 	def emit(self, message:str) -> None:
 		if self.stream is not None:
@@ -197,8 +186,8 @@ class DailyFileStream(FileStream):
 				self.doRotate()
 			super().emit(message)
 	def shouldRotate(self, message:str) -> bool:
-		if self.lastRotate is None or self.lastRotate != datetime.utcnow().strftime("%D"):
-			self.lastRotate = datetime.utcnow().strftime("%D")
+		if self.lastRotate is None or self.lastRotate != datetime.now(self.timezone).day:
+			self.lastRotate = datetime.now(self.timezone).day
 			return True
 		return False
 	def doRotate(self) -> None:
