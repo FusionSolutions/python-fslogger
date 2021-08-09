@@ -151,8 +151,13 @@ class RotatedFileStream(FileStream):
 				return int(r[0]), e
 			else:
 				return 0, e
-		if os.path.isdir(os.path.dirname(self.fullPath)):
-			return
+		if not os.path.isdir(os.path.dirname(self.fullPath)):
+			try:
+				os.mkdir(os.path.dirname(self.fullPath), 0o770)
+			except FileExistsError:
+				pass
+			if not os.path.isdir(os.path.dirname(self.fullPath)):
+				return
 		files:List[Tuple[int, str]] = sorted(list(map(sortFileNums, glob(self.fullPath+"*"))), key=lambda x: x[0], reverse=True)
 		for n, f in files:
 			os.rename(f, "{}.{:>03}".format(self.fullPath, n+1))

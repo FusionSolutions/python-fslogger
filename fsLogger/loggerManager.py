@@ -43,9 +43,6 @@ class LoggerManager(T_LoggerManager):
 		if hookSTDOut:
 			sys.stdout = cast(TextIO, STDOutModule())
 		atexit.register(self.close)
-	def __del__(self) -> None:
-		self.close()
-		return None
 	def getFilterData(self, name:str) -> Tuple[float, int]:
 		return (
 			self.filterChangeTime,

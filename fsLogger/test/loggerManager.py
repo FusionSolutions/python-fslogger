@@ -124,4 +124,5 @@ class LoggerManagerTest(unittest.TestCase):
 			getattr(Logger(lName), lvl)("ok")
 			self.assertListEqual(mod.data, ["ok"] if s else [])
 			mod.close()
+		lm.close()
 		return None
