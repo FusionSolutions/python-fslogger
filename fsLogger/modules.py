@@ -160,7 +160,10 @@ class RotatedFileStream(FileStream):
 				return
 		files:List[Tuple[int, str]] = sorted(list(map(sortFileNums, glob(self.fullPath+"*"))), key=lambda x: x[0], reverse=True)
 		for n, f in files:
-			os.rename(f, "{}.{:>03}".format(self.fullPath, n+1))
+			if self.maxBackup is not None and self.maxBackup <= n+1:
+				os.remove(f)
+			else:
+				os.rename(f, "{}.{:>03}".format(self.fullPath, n+1))
 
 class DailyFileStream(FileStream):
 	path:str
