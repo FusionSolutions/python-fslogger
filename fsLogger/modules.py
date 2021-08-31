@@ -1,6 +1,7 @@
 # Builtin modules
 from __future__ import annotations
 import re, os, traceback
+from threading import Lock
 from glob import glob
 from datetime import datetime, timezone
 from typing import List, Tuple, Any, Optional
@@ -72,9 +73,11 @@ class STDOutStreamingModule(T_ModuleBase):
 class FileStream(T_ModuleBase):
 	fullPath:str
 	stream:Any
+	lock:Lock
 	def __init__(self, fullPath:str):
 		self.fullPath = fullPath
 		self.stream   = None
+		self.lock     = Lock()
 		self.open()
 	def open(self) -> None:
 		try:
@@ -87,11 +90,12 @@ class FileStream(T_ModuleBase):
 			traceback.print_exc()
 	def write(self, data:str) -> None:
 		if self.stream is not None:
-			try:
-				self.stream.write(data)
-				self.stream.flush()
-			except:
-				traceback.print_exc()
+			with self.lock:
+				try:
+					self.stream.write(data)
+					self.stream.flush()
+				except:
+					traceback.print_exc()
 	def emit(self, message:str) -> None:
 		self.write(message)
 	def close(self) -> None:
