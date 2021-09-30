@@ -1,5 +1,5 @@
 from __future__ import annotations
-__version__ = "0.1.6"
+__version__ = "0.1.7"
 __doc__ = """
 Logging utility v{}
 Copyright (C) 2021 Fusion Solutions KFT <contact@fusionsolutions.io>
