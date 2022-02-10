@@ -8,7 +8,7 @@ from typing import Dict, List, Any, cast, TextIO, Union, Tuple, Optional
 # Third party modules
 # Local modules
 from .globHandler import _GlobHandler
-from .abcs import T_LoggerManager
+from .abcs import T_Filter, T_LoggerManager
 from .filter import Filter, FilterParser
 from .modules import STDOutStreamingModule, STDErrModule, STDOutModule, FileStream, RotatedFileStream, DailyFileStream
 from .levels import Levels
@@ -24,7 +24,7 @@ class LoggerManager(T_LoggerManager):
 	@staticmethod
 	def getHandler() -> Optional[T_LoggerManager]:
 		return _GlobHandler.get()
-	def __init__(self, filter:Optional[Union[List[Any], str, Filter]]=None, messageFormat:str=DEF_FORMAT,
+	def __init__(self, filter:Optional[Union[List[Any], str, T_Filter]]=None, messageFormat:str=DEF_FORMAT,
 	dateFormat:str=DEF_DATE, defaultLevel:Optional[Union[int, str]]=None, hookSTDOut:bool=True, hookSTDErr:bool=True):
 		_GlobHandler.activate(self)
 		self.filter        = Filter(Levels.parse(DEF_LEVEL if defaultLevel is None else defaultLevel ))
@@ -56,13 +56,13 @@ class LoggerManager(T_LoggerManager):
 			for handler in self.modules:
 				try: handler.emit(parsedMessage)
 				except: pass
-	def extendFilter(self, data:Union[List[Any], str, Filter]) -> None:
-		filter = Filter(0)
+	def extendFilter(self, data:Union[List[Any], str, T_Filter]) -> None:
+		filter:T_Filter = Filter(0)
 		if isinstance(data, list):
 			filter = FilterParser.fromJson(data)
 		elif isinstance(data, str):
 			filter = FilterParser.fromString(data)
-		assert isinstance(filter, Filter)
+		assert isinstance(filter, T_Filter)
 		self.filter.extend(filter)
 	def close(self) -> None:
 		for module in self.modules:

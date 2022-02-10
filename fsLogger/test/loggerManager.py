@@ -36,6 +36,7 @@ class LoggerManagerTest(unittest.TestCase):
 			with open(fn, "rt") as fid:
 				self.assertEqual(fid.read(), "[INF][test] : Hello\n")
 		lm.close()
+		#
 		lm = LoggerManager(
 			messageFormat="[{levelshortname}][{name}] : {message}\n",
 			defaultLevel="TRACE",
@@ -51,6 +52,23 @@ class LoggerManagerTest(unittest.TestCase):
 			with open(fn, "rt") as fid:
 				self.assertEqual(fid.read(), "[INF][Standard.Output] : Hello\n[INF][Standard.Output] : Hello\n")
 		lm.close()
+		#
+		lm = LoggerManager(
+			messageFormat="[{levelshortname}][{name}] : {message}\n",
+			defaultLevel="TRACE",
+			hookSTDOut=True,
+			hookSTDErr=False
+		)
+		with TemporaryDirectory() as tmpdir:
+			fn = "{}/teszt.log".format(tmpdir)
+			lm.initFileStream(fn)
+			Logger("some").info("Hello")
+			Logger("some").getChild("module").info("Hello")
+			Logger("some").getChild("module", "sub").info("Hello")
+			with open(fn, "rt") as fid:
+				self.assertEqual(fid.read(),"[INF][some] : Hello\n[INF][some.module] : Hello\n[INF][some.module.sub] : Hello\n")
+		lm.close()
+		#
 		lm = LoggerManager(
 			messageFormat="[{levelshortname}][{name}] : {message}\n",
 			defaultLevel="TRACE",

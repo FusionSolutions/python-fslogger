@@ -7,7 +7,7 @@ This utility is an alternative for the built-in `logging` utility.
 
 ## Installation
 
-Requires python version 3.7 or later.
+Requires python version 3.8 or later.
 
 To install the latest release on [PyPI](https://pypi.org/project/python-fslogger/),
 simply run:

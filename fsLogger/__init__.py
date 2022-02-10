@@ -1,5 +1,4 @@
-from __future__ import annotations
-__version__ = "0.1.7"
+__version__ = "0.2.0"
 __doc__ = """
 Logging utility v{}
 Copyright (C) 2021 Fusion Solutions KFT <contact@fusionsolutions.io>
@@ -26,7 +25,7 @@ from .levels import Levels
 from .filter import Filter, FilterParser
 from .logger import Logger
 from .loggerManager import LoggerManager, DowngradedLoggerManager
-from .abcs import T_LoggerManager
+from .abcs import T_Logger, T_LoggerManager
 # Program
 def SimpleLogger(level:Union[str, int]="TRACE") -> T_LoggerManager:
 	lm:T_LoggerManager
@@ -45,4 +44,5 @@ def downgradeLoggerManager() -> T_LoggerManager:
 		lm = cast(T_LoggerManager, _GlobHandler.get())
 	return lm
 
-__all__ = "LoggerManager", "Logger", "Levels", "Filter", "FilterParser", "SimpleLogger", "downgradeLoggerManager"
+__all__ = ("LoggerManager", "Logger", "Levels", "Filter", "FilterParser", "SimpleLogger", "downgradeLoggerManager", "T_Logger",
+"T_LoggerManager")
