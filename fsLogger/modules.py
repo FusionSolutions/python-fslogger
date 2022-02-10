@@ -7,11 +7,11 @@ from datetime import datetime, timezone
 from typing import List, Tuple, Any, Optional
 # Third party modules
 # Local modules
-from .abcs import T_ModuleBase
+from .abcs import T_Logger, T_ModuleBase
 from .logger import Logger
 # Program
 class STDErrModule:
-	log:Logger
+	log:T_Logger
 	closed:bool
 	buffer:str
 	def __init__(self) -> None:
@@ -34,7 +34,7 @@ class STDErrModule:
 		self.closed = True
 
 class STDOutModule:
-	log:Logger
+	log:T_Logger
 	closed:bool
 	buffer:str
 	def __init__(self) -> None:

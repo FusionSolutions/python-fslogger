@@ -1,18 +1,18 @@
 # Builtin modules
-from __future__ import annotations
 from typing import Dict, Any, Union
 from time import time
 # Third party modules
 # Local modules
+from .abcs import T_Logger
 from .globHandler import _GlobHandler
 from .levels import Levels
 # Program
-class Logger:
+class Logger(T_Logger):
 	name:str
 	filterChangeTime:float
 	lastFilterLevel:int
 	__slots__ = ( "name", "filterChangeTime", "lastFilterLevel" )
-	def __init__(self, name:Union[str, Logger]):
+	def __init__(self, name:Union[str, T_Logger]):
 		if isinstance(name, Logger):
 			name = name.name
 		self.__setstate__({ "name":name, "filterChangeTime":0, "lastFilterLevel":0 })
@@ -26,8 +26,8 @@ class Logger:
 		self.name = states["name"]
 		self.filterChangeTime = states["filterChangeTime"]
 		self.lastFilterLevel = states["lastFilterLevel"]
-	def getChild(self, name:str) -> Logger:
-		return Logger("{}{}{}".format(self.name, _GlobHandler.getGroupSeperator(), name))
+	def getChild(self, *name:str) -> T_Logger:
+		return Logger(_GlobHandler.getGroupSeperator().join([self.name] + list(name)))
 	def isFiltered(self, levelID:Union[int, str]) -> bool:
 		if self.filterChangeTime != _GlobHandler.getFilterChangeTime():
 			self.filterChangeTime, self.lastFilterLevel = _GlobHandler.getFilterData(self.name)
