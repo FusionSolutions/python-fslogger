@@ -74,30 +74,30 @@ class FileStream(T_ModuleBase):
 	fullPath:str
 	stream:Any
 	lock:Lock
+	isClosed:bool
 	def __init__(self, fullPath:str):
 		self.fullPath = fullPath
-		self.stream   = None
 		self.lock     = Lock()
-		self.open()
+		self.stream   = None
+		self.isClosed = False
 	def open(self) -> None:
-		try:
-			os.makedirs( os.path.dirname(self.fullPath), 0o755 , True)
-		except:
-			traceback.print_exc()
-		try:
-			self.stream = open(self.fullPath, "at")
-		except:
-			traceback.print_exc()
+		os.makedirs( os.path.dirname(self.fullPath), 0o755 , True)
+		self.stream = open(self.fullPath, "at")
 	def write(self, data:str) -> None:
-		if self.stream is not None:
-			with self.lock:
-				try:
-					self.stream.write(data)
-					self.stream.flush()
-				except:
-					traceback.print_exc()
+		if self.isClosed:
+			return
+		try:
+			if self.stream is None:
+				self.open()
+			if self.stream is not None:
+				self.stream.write(data)
+				self.stream.flush()
+		except:
+			traceback.print_exc()
+			self.isClosed = True
 	def emit(self, message:str) -> None:
-		self.write(message)
+		with self.lock:
+			self.write(message)
 	def close(self) -> None:
 		if self.stream is not None:
 			self.stream.close()
@@ -109,20 +109,21 @@ class RotatedFileStream(FileStream):
 	maxBackup:Optional[int]
 	lastRotate:Optional[int]
 	lastFileSize:Optional[int]
+	timezone:Optional[timezone]
 	def __init__(self, fullPath:str, maxBytes:int=0, rotateDaily:bool=False, maxBackup:Optional[int]=None,
 	useUTCTimezone:bool=True):
+		self.maxBytes     = maxBytes
+		self.rotateDaily  = rotateDaily
+		self.maxBackup    = maxBackup
+		self.lastRotate   = None
+		self.lastFileSize = None
+		self.timezone     = timezone.utc if useUTCTimezone else None
 		super().__init__(fullPath)
-		self.maxBytes                    = maxBytes
-		self.rotateDaily                 = rotateDaily
-		self.maxBackup                   = maxBackup
-		self.lastRotate                  = None
-		self.lastFileSize                = None
-		self.timezone:Optional[timezone] = timezone.utc if useUTCTimezone else None
 	def emit(self, message:str) -> None:
-		if self.stream is not None:
+		with self.lock:
 			if self.shouldRotate(message):
 				self.doRotate()
-			super().emit(message)
+			self.write(message)
 	def shouldRotate(self, message:str) -> bool:
 		if self.lastRotate is None:
 			self.lastRotate = datetime.now(self.timezone).day
@@ -147,24 +148,20 @@ class RotatedFileStream(FileStream):
 			self.shiftLogFiles()
 		except:
 			traceback.print_exc()
+			self.stream = None
+			self.isClosed = True
 		self.open()
 	def shiftLogFiles(self) -> None:
 		def sortFileNums(e:str) -> Tuple[int, str]:
-			r = re.findall(r'^.*[^\.]\.([0-9]*)$', e)
+			r = re.findall(r'^.*\.([0-9]{3})$', e)
 			if r:
 				return int(r[0]), e
 			else:
 				return 0, e
-		if not os.path.isdir(os.path.dirname(self.fullPath)):
-			try:
-				os.mkdir(os.path.dirname(self.fullPath), 0o770)
-			except FileExistsError:
-				pass
-			if not os.path.isdir(os.path.dirname(self.fullPath)):
-				return
+		os.makedirs( os.path.dirname(self.fullPath), 0o755 , True)
 		files:List[Tuple[int, str]] = sorted(list(map(sortFileNums, glob(self.fullPath+"*"))), key=lambda x: x[0], reverse=True)
 		for n, f in files:
-			if self.maxBackup is not None and self.maxBackup <= n+1:
+			if self.maxBackup is not None and self.maxBackup < n+1:
 				os.remove(f)
 			else:
 				os.rename(f, "{}.{:>03}".format(self.fullPath, n+1))
@@ -175,13 +172,14 @@ class DailyFileStream(FileStream):
 	postfix:str
 	dateFormat:str
 	lastRotate:Optional[int]
+	timezone:Optional[timezone]
 	def __init__(self, path:str, prefix:str="", postfix:str="", dateFormat:str="%Y-%m-%d", useUTCTimezone:bool=True):
-		self.path                        = path
-		self.prefix                      = prefix
-		self.postfix                     = postfix
-		self.dateFormat                  = dateFormat
-		self.lastRotate                  = None
-		self.timezone:Optional[timezone] = timezone.utc if useUTCTimezone else None
+		self.path       = path
+		self.prefix     = prefix
+		self.postfix    = postfix
+		self.dateFormat = dateFormat
+		self.lastRotate = None
+		self.timezone   = timezone.utc if useUTCTimezone else None
 		super().__init__(self.buildPath())
 	def buildPath(self) -> str:
 		return os.path.join(
@@ -193,10 +191,10 @@ class DailyFileStream(FileStream):
 			)
 		)
 	def emit(self, message:str) -> None:
-		if self.stream is not None:
+		with self.lock:
 			if self.shouldRotate(message):
 				self.doRotate()
-			super().emit(message)
+			self.write(message)
 	def shouldRotate(self, message:str) -> bool:
 		if self.lastRotate is None or self.lastRotate != datetime.now(self.timezone).day:
 			self.lastRotate = datetime.now(self.timezone).day
