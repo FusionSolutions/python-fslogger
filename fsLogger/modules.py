@@ -1,7 +1,6 @@
 # Builtin modules
 from __future__ import annotations
 import re, os, traceback
-from threading import Lock
 from glob import glob
 from datetime import datetime, timezone
 from typing import List, Tuple, Any, Optional
@@ -9,6 +8,7 @@ from typing import List, Tuple, Any, Optional
 # Local modules
 from .abcs import T_Logger, T_ModuleBase
 from .logger import Logger
+from .globalLocker import lock
 # Program
 class STDErrModule:
 	log:T_Logger
@@ -73,11 +73,9 @@ class STDOutStreamingModule(T_ModuleBase):
 class FileStream(T_ModuleBase):
 	fullPath:str
 	stream:Any
-	lock:Lock
 	isClosed:bool
 	def __init__(self, fullPath:str):
 		self.fullPath = fullPath
-		self.lock     = Lock()
 		self.stream   = None
 		self.isClosed = False
 	def open(self) -> None:
@@ -96,7 +94,7 @@ class FileStream(T_ModuleBase):
 			traceback.print_exc()
 			self.isClosed = True
 	def emit(self, message:str) -> None:
-		with self.lock:
+		with lock:
 			self.write(message)
 	def close(self) -> None:
 		if self.stream is not None:
@@ -120,7 +118,7 @@ class RotatedFileStream(FileStream):
 		self.timezone     = timezone.utc if useUTCTimezone else None
 		super().__init__(fullPath)
 	def emit(self, message:str) -> None:
-		with self.lock:
+		with lock:
 			if self.shouldRotate(message):
 				self.doRotate()
 			self.write(message)
@@ -150,6 +148,7 @@ class RotatedFileStream(FileStream):
 			traceback.print_exc()
 			self.stream = None
 			self.isClosed = True
+		self.lastFileSize = 0
 		self.open()
 	def shiftLogFiles(self) -> None:
 		def sortFileNums(e:str) -> Tuple[int, str]:
@@ -191,7 +190,7 @@ class DailyFileStream(FileStream):
 			)
 		)
 	def emit(self, message:str) -> None:
-		with self.lock:
+		with lock:
 			if self.shouldRotate(message):
 				self.doRotate()
 			self.write(message)

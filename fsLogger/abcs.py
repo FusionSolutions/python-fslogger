@@ -1,7 +1,6 @@
 # Builtin modules
 from __future__ import annotations
 from abc import ABCMeta, abstractmethod
-from threading import RLock
 # from socket import socket
 from typing import Dict, Tuple, Optional, Any, List, Union, OrderedDict
 # Third party modules
@@ -46,7 +45,6 @@ class T_Filter(metaclass=ABCMeta):
 	def extend(self, inp:T_Filter) -> None: ...
 
 class T_LoggerManager(metaclass=ABCMeta):
-	lock:RLock
 	filterChangeTime:float
 	groupSeperator:str
 	handler:Optional[T_LoggerManager]

@@ -3,7 +3,6 @@ from __future__ import annotations
 import sys, atexit, traceback
 from datetime import datetime
 from time import monotonic
-from threading import RLock
 from typing import Dict, List, Any, cast, TextIO, Union, Tuple, Optional
 # Third party modules
 # Local modules
@@ -18,7 +17,6 @@ DEF_FORMAT = "[{levelshortname}][{date}][{name}] : {message}\n"
 DEF_DATE = "%Y-%m-%d %H:%M:%S.%f"
 
 class LoggerManager(T_LoggerManager):
-	lock = RLock()
 	filterChangeTime = monotonic()
 	groupSeperator = "."
 	@staticmethod
@@ -52,10 +50,9 @@ class LoggerManager(T_LoggerManager):
 		)
 	def emit(self, name:str, levelID:int, timestamp:float, message:Any, _args:Tuple[Any, ...], _kwargs:Dict[str, Any]) -> None:
 		parsedMessage = self.messageFormatter(name, levelID, timestamp, message, _args, _kwargs)
-		with self.lock:
-			for handler in self.modules:
-				try: handler.emit(parsedMessage)
-				except: pass
+		for handler in self.modules:
+			try: handler.emit(parsedMessage)
+			except: pass
 	def extendFilter(self, data:Union[List[Any], str, T_Filter]) -> None:
 		filter:T_Filter = Filter(0)
 		if isinstance(data, list):
