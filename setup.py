@@ -9,7 +9,7 @@ pwd = os.path.abspath(os.path.dirname(__file__))
 
 setup(
 	name                          = "python-fslogger",
-	version                       = "0.2.2",
+	version                       = "0.2.3",
 	description                   = "Logging utility",
 	keywords                      = "logging utility fusion solutions fusionsolutions",
 	author                        = "Andor `iFA` Rajci - Fusions Solutions KFT",
