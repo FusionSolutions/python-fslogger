@@ -94,13 +94,13 @@ class LoggerManager(T_LoggerManager):
 		self.modules.append( STDOutStreamingModule(self._stdout) )
 		return None
 	def initFileStream(self, fullPath:str) -> None:
-		self.modules.append( FileStream(fullPath) )
+		self.modules.append( FileStream(self._stderr, fullPath) )
 		return None
 	def initRotatedFileStream(self, fullPath:str, maxBytes:int=0, rotateDaily:bool=False, maxBackup:Optional[int]=None) -> None:
-		self.modules.append( RotatedFileStream(fullPath, maxBytes, rotateDaily, maxBackup) )
+		self.modules.append( RotatedFileStream(self._stderr, fullPath, maxBytes, rotateDaily, maxBackup) )
 		return None
 	def initDailyFileStream(self, logPath:str, prefix:str, postfix:str, dateFormat:str="%Y-%m-%d") -> None:
-		self.modules.append( DailyFileStream(logPath, prefix, postfix, dateFormat) )
+		self.modules.append( DailyFileStream(self._stderr, logPath, prefix, postfix, dateFormat) )
 		return None
 
 class DowngradedLoggerManager(LoggerManager):
